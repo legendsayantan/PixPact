@@ -35,6 +35,7 @@ jobs:
 #        run: bash sitemap.sh "$GITHUB_REPOSITORY"
       - name: Setup Pages
         uses: actions/configure-pages@v4
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
@@ -42,4 +43,4 @@ jobs:
           path: '.'
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
