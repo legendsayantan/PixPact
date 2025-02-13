@@ -1,0 +1,54 @@
+name: Build and push
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch :
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set environment variable
+        run: CI=''
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build the project
+        run: npm run build -- --max-warnings=0
+
+      # copy index.html to 404.html to serve the homepage when a file is not found
+      - name: copy index.html to 404.html
+        run: cp build/index.html build/404.html
+
+      # add .nojekyll file to tell GitHub pages to not treat this as a Jekyll project. (Allow files and folders starting with an underscore)
+      - name: Add .nojekyll file
+        run: touch build/.nojekyll
+
+      - name: Push to pixpact.js.org repository
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{secrets.API_TOKEN_GITHUB}}
+        with:
+          source-directory: 'build'
+          destination-github-username: 'legendsayantan'
+          destination-repository-name: 'pixpact.js.org'
+          target-branch: main
+          user-email: 'legendsayantan@gmail.com'
+
+      - name: Setup workflows
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{secrets.API_TOKEN_GITHUB}}
+        with:
+          source-directory: .push/.github/
+          target-directory: .github/
+          destination-github-username: 'legendsayantan'
+          destination-repository-name: 'pixpact.js.org'
+          target-branch: main
+          user-email: 'legendsayantan@gmail.com'
