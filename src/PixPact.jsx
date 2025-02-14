@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import './Home.css';
+import './PixPact.css';
 import { jsPDF } from 'jspdf';
 
 // All dimensions in mm for paper sizes
@@ -40,7 +40,7 @@ const getImageDataUrl = (imgSrc) => {
     });
 };
 
-const Home = () => {
+const PixPact = () => {
     const [images, setImages] = useState([]);
     const [globalScale, setGlobalScale] = useState(50);
     const [scaleOption, setScaleOption] = useState("percentage");
@@ -117,7 +117,7 @@ const Home = () => {
 
         // Compute scaled dimensions for each image.
         const scaledImages = images.map((img, idx) => {
-            // If an individual override is provided, use that.
+            // If an individual routed is provided, use that.
             const override = img.overrideScale ? parseFloat(img.overrideScale) : null;
             if (override !== null && !isNaN(override)) {
                 return {
@@ -160,7 +160,7 @@ const Home = () => {
         const pages = [];
         let remaining = [...scaledImages];
 
-        // Pack images into pages using a column-based algorithm.
+        // Pack images into subpages using a column-based algorithm.
         while (remaining.length > 0) {
             const pagePlacements = [];
             const columns = []; // Each column: { x, currentY, maxWidth }
@@ -252,7 +252,6 @@ const Home = () => {
         if (orientation === "landscape") {
             [pageWidth, pageHeight] = [pageHeight, pageWidth];
         }
-        const margin = parseFloat(imageMargin) || 0;
         const pages = calculateLayout();
         if (pages.length === 0) {
             setPdfLoading(false);
@@ -348,6 +347,24 @@ const Home = () => {
                                 <option value="Custom">Custom</option>
                             </select>
                         </div>
+                        {pageFormat === "Custom" && (
+                            <div className="form-group custom-dimensions">
+                                <input
+                                    type="number"
+                                    placeholder="Width (mm)"
+                                    value={customPageWidth}
+                                    onChange={(e) => setCustomPageWidth(e.target.value)}
+                                    className="styled-input"
+                                />
+                                <input
+                                    type="number"
+                                    placeholder="Height (mm)"
+                                    value={customPageHeight}
+                                    onChange={(e) => setCustomPageHeight(e.target.value)}
+                                    className="styled-input"
+                                />
+                            </div>
+                        )}
                         <div className="form-group">
                             <label>Orientation:</label>
                             <div className="orientation-options">
@@ -371,24 +388,7 @@ const Home = () => {
                                 </label>
                             </div>
                         </div>
-                        {pageFormat === "Custom" && (
-                            <div className="form-group custom-dimensions">
-                                <input
-                                    type="number"
-                                    placeholder="Width (mm)"
-                                    value={customPageWidth}
-                                    onChange={(e) => setCustomPageWidth(e.target.value)}
-                                    className="styled-input"
-                                />
-                                <input
-                                    type="number"
-                                    placeholder="Height (mm)"
-                                    value={customPageHeight}
-                                    onChange={(e) => setCustomPageHeight(e.target.value)}
-                                    className="styled-input"
-                                />
-                            </div>
-                        )}
+
                     </div>
 
                     <div className="scale-customization">
@@ -450,7 +450,7 @@ const Home = () => {
 
                     <div className="control-btns">
                         <button onClick={handleCalculate} className="control-btn calc-btn">
-                            Calculate
+                            Preview
                         </button>
                         <button onClick={handleGeneratePDF} className="control-btn generate-btn">
                             Save as PDF
@@ -458,33 +458,43 @@ const Home = () => {
                     </div>
                 </div>
 
-                <div className="previews">
-                    {images.map((img, index) => (
-                        <div key={index} className="preview-container" onClick={() => openPopup(index)}>
-                            <div className="preview-number">{index + 1}</div>
-                            <img
-                                src={img.src}
-                                alt={`Preview ${index}`}
-                                className="preview-image"
-                            />
-                            <div className="overlay">
+                {
+                    images.length === 0 ? (
+                        <div className="empty-preview">
+                            <h2>Add some images to effortlessly compact them into pages</h2>
+                            <p>provide mismatching images, of any size or resolution</p>
+                        </div>
+                    ) : (
+                        <div className="previews">
+                            {images.map((img, index) => (
+                                <div key={index} className="preview-container" onClick={() => openPopup(index)}>
+                                    <div className="preview-number">{index + 1}</div>
+                                    <img
+                                        src={img.src}
+                                        alt={`Preview ${index}`}
+                                        className="preview-image"
+                                    />
+                                    <div className="overlay">
                 <span>
                   {img.width} x {img.height}
                 </span>
-                                <span>Scale: {img.overrideScale || "Default"}{img.overrideScale?"%":""}</span>
-                            </div>
-                            <button
-                                className="remove-btn"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeImage(index);
-                                }}
-                            >
-                                &times;
-                            </button>
+                                        <span>Scale: {img.overrideScale || "Default"}{img.overrideScale?"%":""}</span>
+                                    </div>
+                                    <button
+                                        className="remove-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeImage(index);
+                                        }}
+                                    >
+                                        &times;
+                                    </button>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
+                    )
+                }
+
             </div>
 
             {/* Customise popup for individual image */}
@@ -536,7 +546,7 @@ const Home = () => {
             {showCalcPopup && calcPages && (
                 <div className="popup-overlay" onClick={() => setShowCalcPopup(false)}>
                     <div className="popup calc-popup-vertical" onClick={(e) => e.stopPropagation()}>
-                        <h2 className="calc-heading">Layout Calculation</h2>
+                        <h2 className="calc-heading">Layout Preview</h2>
                         <div className="calc-tabs">
                             {calcPages.map((page, idx) => (
                                 <button
@@ -572,19 +582,43 @@ const Home = () => {
                                         style={{ width: previewWidth, height: previewHeight }}
                                     >
                                         {calcPages[activeCalcPage].map(item => (
-                                            <img
+                                            <div
                                                 key={item.index}
-                                                src={images[item.index].src}
-                                                alt={`Image ${item.index + 1}`}
                                                 style={{
                                                     position: 'absolute',
                                                     left: item.x * scaleFactor,
                                                     top: item.y * scaleFactor,
                                                     width: item.width * scaleFactor,
                                                     height: item.height * scaleFactor,
+                                                    border: '2px dashed #FFD700', // deep yellow border
+                                                    boxSizing: 'border-box'
                                                 }}
-                                            />
+                                            >
+                                                <img
+                                                    src={images[item.index].src}
+                                                    alt={`Image ${item.index + 1}`}
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        display: 'block'
+                                                    }}
+                                                />
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: 0,
+                                                        left: 0,
+                                                        background: '#ff5722', // or another color for contrast
+                                                        color: '#fff',
+                                                        padding: '2px 4px',
+                                                        fontSize: '10px'
+                                                    }}
+                                                >
+                                                    {item.index + 1}
+                                                </div>
+                                            </div>
                                         ))}
+
                                     </div>
                                 );
                             })()}
@@ -599,4 +633,4 @@ const Home = () => {
     );
 };
 
-export default Home;
+export default PixPact;

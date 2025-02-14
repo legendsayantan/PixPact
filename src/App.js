@@ -1,12 +1,12 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
-import Home from "./Home";
+import PixPact from "./PixPact.jsx";
 
 function App() {
   return (
     <div className="App">
-      <Home/>
+      <PixPact/>
     </div>
   );
 }
