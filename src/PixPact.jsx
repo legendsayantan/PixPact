@@ -700,10 +700,11 @@ const PixPact = () => {
                                 if (orientation === "landscape") {
                                     [pageWidth, pageHeight] = [pageHeight, pageWidth];
                                 }
-                                const aspectRatio = pageHeight / pageWidth;
-                                const previewWidth = orientation === "landscape" ? 500 : 300;
-                                const previewHeight = previewWidth * aspectRatio;
-                                const scaleFactor = previewWidth / pageWidth;
+                                const widthScale = (window.innerWidth-100)/pageWidth;
+                                const heightScale = (window.innerHeight-250)/pageHeight;
+                                const scaleFactor = Math.min(widthScale, heightScale);
+                                const previewWidth = pageWidth * scaleFactor;
+                                const previewHeight = pageHeight * scaleFactor;
                                 return (
                                     <div
                                         className="calc-preview-page"
