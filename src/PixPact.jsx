@@ -700,8 +700,9 @@ const PixPact = () => {
                                 if (orientation === "landscape") {
                                     [pageWidth, pageHeight] = [pageHeight, pageWidth];
                                 }
+                                const tabsAreaHeight = Math.ceil(((calcPages.length * 50)-100)/window.innerWidth)*42;
                                 const widthScale = (window.innerWidth-100)/pageWidth;
-                                const heightScale = (window.innerHeight-250)/pageHeight;
+                                const heightScale = (window.innerHeight-200-tabsAreaHeight)/pageHeight;
                                 const scaleFactor = Math.min(widthScale, heightScale);
                                 const previewWidth = pageWidth * scaleFactor;
                                 const previewHeight = pageHeight * scaleFactor;
