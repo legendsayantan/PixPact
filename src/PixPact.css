@@ -482,6 +482,14 @@
     border-radius: 8px;
 }
 
+.empty-preview div{
+    height: 90%;
+    text-align: center;
+    justify-content: center;
+    padding: 40px;
+    align-content: center;
+}
+
 .empty-preview h2 {
     margin-bottom: 15px;
     font-size: 1.5em;
@@ -491,5 +499,10 @@
 .empty-preview p {
     font-size: 1em;
     color: wheat;
+}
+
+.empty-preview a {
+    color: white;
+    transition: color 0.3s;
 }
 

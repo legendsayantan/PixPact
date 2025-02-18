@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import './PixPact.css';
 import { jsPDF } from 'jspdf';
+import empty_preview_image from "./images/icon.svg"
 
 // All dimensions in mm for paper sizes
 const paperSizes = {
@@ -385,29 +386,6 @@ const PixPact = () => {
         setPdfLoading(false);
     };
 
-    // Prepare preview for the calculated page in the Calculate popup.
-    let previewPageStyle = {};
-    let scaleFactor = 1;
-    if (pageFormat) {
-        let pageWidth, pageHeight;
-        if (pageFormat === "Custom") {
-            pageWidth = parseFloat(customPageWidth) || 210;
-            pageHeight = parseFloat(customPageHeight) || 297;
-        } else {
-            const dims = paperSizes[pageFormat];
-            pageWidth = dims.width;
-            pageHeight = dims.height;
-        }
-        if (orientation === "landscape") {
-            [pageWidth, pageHeight] = [pageHeight, pageWidth];
-        }
-        const aspectRatio = pageHeight / pageWidth;
-        const previewWidth = orientation === "landscape" ? 500 : 300;
-        const previewHeight = previewWidth * aspectRatio;
-        scaleFactor = previewWidth / pageWidth;
-        previewPageStyle = { width: previewWidth, height: previewHeight, position: 'relative', backgroundColor: '#fff' };
-    }
-
     return (
         <div className="home-container">
             {pdfLoading && (
@@ -596,8 +574,12 @@ const PixPact = () => {
                 {
                     images.length === 0 ? (
                         <div className="empty-preview">
-                            <h2>Add some images to effortlessly compact them into pages</h2>
-                            <p>provide mismatching images, of any size or resolution</p>
+                            <div>
+                                <img src={empty_preview_image} alt="add" style={{width:"100px",height:"100px",color:"white"}}/>
+                                <h2>Add some images to effortlessly compact them into pages</h2>
+                                <p>Provide mismatching images, of any size, resolution or aspect ratio</p>
+                            </div>
+                            <p style={{alignSelf:"end",fontSize:"small"}}>Have feedback? <a href="https://github.com/legendsayantan/pixpact/issues">write them here</a></p>
                         </div>
                     ) : (
                         <div className="previews">
