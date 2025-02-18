@@ -53,6 +53,7 @@ const PixPact = () => {
     const [customPageHeight, setCustomPageHeight] = useState('');
     const [pageBorder, setPageBorder] = useState(0);
     const [imageMargin, setImageMargin] = useState(0);
+    const [priority, setPriority] = useState("pages");
     const [popupImageIndex, setPopupImageIndex] = useState(null);
     const [calcPages, setCalcPages] = useState(null);
     const [showCalcPopup, setShowCalcPopup] = useState(false);
@@ -86,8 +87,24 @@ const PixPact = () => {
         setPopupImageIndex(index);
     };
 
-    const closePopup = () => {
+    const closePopup = (shouldMove=true) => {
+        let modifiedNo = document.getElementById("imageNoModified");
+        if(shouldMove && modifiedNo.value!==modifiedNo.defaultValue) {
+            moveItemTo(popupImageIndex, parseInt(modifiedNo.value, 10) - 1);
+        }
         setPopupImageIndex(null);
+    };
+
+    const moveItemTo = (index, destinationIndex) => {
+        setImages(prevImages => {
+            // create a shallow copy of the array
+            const updatedImages = [...prevImages];
+            // remove the image at 'index'
+            const [movedImage] = updatedImages.splice(index, 1);
+            // insert the image at 'destinationIndex'
+            updatedImages.splice(destinationIndex, 0, movedImage);
+            return updatedImages;
+        });
     };
 
     const handleOverrideChange = (index, value) => {
@@ -143,12 +160,17 @@ const PixPact = () => {
             } else {
                 // Fixed columns mode: use availableWidth (accounting for border)
                 const effectivePageWidth = availableWidth - ((columnsPerPage - 1) * margin);
-                const newWidth = Math.floor(effectivePageWidth / columnsPerPage);
-                const scale = newWidth / img.width;
+                let columnWidth = Math.floor(effectivePageWidth / columnsPerPage);
+                let scale = columnWidth / img.width;
+                // if image is still taller than the available area, scale it down further
+                if ((img.height * scale) > availableHeight) {
+                    scale = availableHeight / img.height;
+                    columnWidth = Math.floor(img.width * scale);
+                }
                 return {
                     index: idx,
-                    width: newWidth,
-                    height: img.height * scale,
+                    width: columnWidth,
+                    height: Math.floor(img.height * scale),
                     src: img.src
                 };
             }
@@ -168,9 +190,11 @@ const PixPact = () => {
         }
 
         // Optional: sort images (here, descending by area).
-        scaledImages.sort(
-            (a, b) => b.width * b.height - a.width * a.height
-        );
+        if(priority==="pages"){
+            scaledImages.sort(
+                (a, b) => b.width * b.height - a.width * a.height
+            );
+        }
 
         // Initialize the skyline to the top edge of the available area.
         // The x coordinate starts at borderValue and spans availableWidth.
@@ -202,10 +226,11 @@ const PixPact = () => {
             return { x: bestX, y: bestY, nodeIndex: bestNodeIndex };
         };
 
-        // Update the skyline after placing an image, and inject a margin gap to the right.
+        // Update the skyline after placing an image.
+        // Here we ensure that the right segment begins at (pos.x + img.width + margin)
+        // if the existing node starts at or before pos.x + img.width.
         const updateSkyline = (pos, img) => {
-            // New node represents the top edge of the placed image plus vertical margin.
-            let newNode = {
+            const newNode = {
                 x: pos.x,
                 width: img.width,
                 y: pos.y + img.height + margin
@@ -213,10 +238,14 @@ const PixPact = () => {
 
             let newSkyline = [];
             for (let node of skyline) {
-                // If the node is completely to the left or right of the placed image...
-                if (node.x + node.width <= pos.x || node.x >= pos.x + img.width) {
-                    // For nodes to the right, shift their x by the margin to maintain horizontal spacing.
-                    if (node.x >= pos.x + img.width) {
+                // If node is completely to the left of the placed image.
+                if (node.x + node.width <= pos.x) {
+                    newSkyline.push(node);
+                }
+                // If node is completely to the right of the placed image.
+                else if (node.x >= pos.x + img.width) {
+                    // If the node is exactly adjacent to the placed image, shift it.
+                    if (node.x === pos.x + img.width) {
                         newSkyline.push({
                             x: node.x + margin,
                             width: node.width,
@@ -225,9 +254,10 @@ const PixPact = () => {
                     } else {
                         newSkyline.push(node);
                     }
-                } else {
-                    // The node overlaps with the placed image.
-                    // Left segment (if any)
+                }
+                // Node overlaps with the placed image.
+                else {
+                    // Left segment, if any.
                     if (node.x < pos.x) {
                         newSkyline.push({
                             x: node.x,
@@ -235,13 +265,13 @@ const PixPact = () => {
                             y: node.y
                         });
                     }
-                    // Right segment: start after the placed image plus horizontal margin.
+                    // Right segment: We want it to start at pos.x + img.width + margin.
                     let rightEdge = node.x + node.width;
-                    let newRightEdge = pos.x + img.width + margin;
-                    if (rightEdge > newRightEdge) {
+                    let desiredX = pos.x + img.width + margin;
+                    if (rightEdge > desiredX) {
                         newSkyline.push({
-                            x: newRightEdge,
-                            width: rightEdge - newRightEdge,
+                            x: desiredX,
+                            width: rightEdge - desiredX,
                             y: node.y
                         });
                     }
@@ -272,10 +302,14 @@ const PixPact = () => {
         while (remaining.length > 0) {
             // Reset the skyline for a new page (starting at the border).
             skyline = [{ x: borderValue, width: availableWidth, y: borderValue }];
-            const pagePlacements = [];
+            let pagePlacements = [];
             const newRemaining = [];
-
+            let filledFlag = false;
             for (let img of remaining) {
+                if(filledFlag){
+                    newRemaining.push(img);
+                    continue;
+                }
                 let pos = findPositionForImage(img);
                 if (pos) {
                     pagePlacements.push({
@@ -289,6 +323,9 @@ const PixPact = () => {
                     updateSkyline(pos, img);
                 } else {
                     // Defer the image to the next page.
+                    if(priority==="order"){
+                        filledFlag = true;
+                    }
                     newRemaining.push(img);
                 }
             }
@@ -298,6 +335,7 @@ const PixPact = () => {
         }
         return pages;
     };
+
 
 
 
@@ -343,7 +381,7 @@ const PixPact = () => {
                 pdf.addImage(dataUrl, 'JPEG', placement.x, placement.y, placement.width, placement.height);
             }
         }
-        pdf.save("pixpact_output_"+images.length+"_images.pdf");
+        pdf.save("pixpact_output ("+images.length+" images).pdf");
         setPdfLoading(false);
     };
 
@@ -403,9 +441,8 @@ const PixPact = () => {
                     </div>
 
                     <div className="page-customization">
-                        <h3>Page Customization</h3>
-                        <div className="form-group">
-                            <label>Page Format:</label>
+                        <div className="form-group hrzntl">
+                            <label>Page:</label>
                             <select
                                 value={pageFormat}
                                 onChange={(e) => setPageFormat(e.target.value)}
@@ -531,6 +568,21 @@ const PixPact = () => {
                         />
                     </div>
 
+                    <div className="form-group hrzntl">
+                        <label>Priority:</label>
+                        <select
+                            value={priority}
+                            onChange={(e) => setPriority(e.target.value)}
+                            className="styled-select"
+                        >
+                            <option value="pages">Use least pages</option>
+                            <option value="try">Try to maintain order</option>
+                            <option value="order">Strictly maintain order</option>
+                        </select>
+                    </div>
+
+
+
                     <div className="control-btns">
                         <button onClick={handleCalculate} className="control-btn calc-btn">
                             Preview
@@ -561,7 +613,7 @@ const PixPact = () => {
                 <span>
                   {img.width} x {img.height}
                 </span>
-                                        <span>Scale: {img.overrideScale || "Default"}{img.overrideScale?"%":""}</span>
+                                        <span>Scale: {img.overrideScale || (scaleOption==="columns" ? "Auto-fit" : "Default")}{img.overrideScale && "%"}</span>
                                     </div>
                                     <button
                                         className="remove-btn"
@@ -593,12 +645,23 @@ const PixPact = () => {
                                 <p>
                                     Image dimensions: {images[popupImageIndex].width} x {images[popupImageIndex].height}
                                 </p>
-                                <div className="form-group">
-                                    <label>Override Scale (%):</label>
+                                <div className="form-group hrzntl" style={{margin:0}}>
+                                    <label style={{width:"100%"}}>Image No.</label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        defaultValue={popupImageIndex+1}
+                                        id="imageNoModified"
+                                        className="popup-input styled-input"
+                                    />
+                                </div>
+                                <div className="form-group hrzntl"style={{margin:0}}>
+                                    <label style={{width:"100%"}}>Override Scale:</label>
                                     <input
                                         type="number"
                                         step="1"
                                         value={images[popupImageIndex].overrideScale}
+                                        placeholder={scaleOption==="columns" ? "Auto-fit" : "Default"}
                                         onChange={(e) =>
                                             handleOverrideChange(popupImageIndex, e.target.value)
                                         }
@@ -609,7 +672,7 @@ const PixPact = () => {
                                     <button
                                         onClick={() => {
                                             removeImage(popupImageIndex);
-                                            closePopup();
+                                            closePopup(false);
                                         }}
                                         className="popup-btn"
                                     >
